@@ -44,6 +44,11 @@ This project is built for **educational and experimental purposes**. Keep in min
 
 I hope to make future improvements, but for now, this is my bot. :)
 
+If you want to invite it to your discord channel just to test how it works here is the link, is not running 24/7 yet due to I have it running on local but
+I have it running most of the time.
+
+🔗 [Juguito de Choco](https://discord.com/oauth2/authorize?client_id=1444797967654453451&permissions=8&integration_type=0&scope=bot)
+
 ---
 
 ## 🛠️ Setup
