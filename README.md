@@ -63,7 +63,7 @@ I will let you with the steps to clone the repo and run your bot, if you have an
     git clone <your-repo>
     cd <your-repo>
 
-- Create a .env file wiht this on it
+- Create a .env file with this on it
 
   DISCORD_TOKEN=your_token
   OPENROUTER_API_KEY=your_api_key
