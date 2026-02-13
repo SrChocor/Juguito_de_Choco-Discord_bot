@@ -1,4 +1,4 @@
-# 🤖 AI Voice Discord Bot
+# 🤖 AI and Voice Discord Bot
 
 A modular Discord bot built with Python and discord.py, featuring AI integrations and real-time Text-to-Speech (TTS) capabilities. This project showcases API integration, voice channel automation, modular architecture using Cogs, and scalable bot design.
 
