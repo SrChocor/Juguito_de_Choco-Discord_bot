@@ -28,14 +28,18 @@ class TTS(commands.Cog):
             await loop.run_in_executor(None, lambda: tts.save(self.file))
             print(f"[SPEAK] File saved, exists={os.path.exists(self.file)}, size={os.path.getsize(self.file) if os.path.exists(self.file) else 0}")
 
-            while self.vc.is_playing():
+            while self.vc and self.vc.is_connected() and self.vc.is_playing():
                 await asyncio.sleep(0.5)
             
             print(f"[SPEAK] vc={self.vc}, connected={self.vc.is_connected() if self.vc else None}")
         
             if self.vc and self.vc.is_connected():
                 print("[SPEAK] Calling vc.play()")
-                self.vc.play(discord.FFmpegPCMAudio(self.file))
+                def after_playing(error):
+                    if error:
+                        print(f"[PLAY] Error: {os.error}")
+
+                self.vc.play(discord.FFmpegPCMAudio(self.file), after=after_playing)
                 print("[SPEAK] vc.play() called successfully")
             else:
                 print("[SPEAK] Not connected!")
@@ -44,48 +48,17 @@ class TTS(commands.Cog):
             import traceback
             print(f"[SPEAK] Exception: {e}")
             traceback.print_exc()
-    """  
-    async def speak(self, text):
-        
-        try:
-            loop = asyncio.get_event_loop()
-            tts = await loop.run_in_executor(None, lambda: gTTS(text=text, lang="es", slow=False))
-            await loop.run_in_executor(None, lambda: tts.save(self.file))
 
-            if not os.path.exists(self.file) or os.path.getsize(self.file) == 0:
-                print("Error: El archivo de audio TTS no se generó correctamente.")
-                return
-            
-            while self.vc.is_playing():
-                await asyncio.sleep(0.5)
-                
-            if self.vc and self.vc.is_connected():
-                try:
-                    self.vc.play(discord.FFmpegPCMAudio(self.file))
-                except Exception as e:
-                    print(f"FFmpeg error: {e}")
-                
-        except asyncio.TimeoutError:
-            print("Error: La generación de TTS tomó demasiado tiempo.")
-            if self.text_channel:
-                await self.text_channel.send("⏳ La generación de TTS tomó demasiado tiempo, intenta de nuevo, es que mi dueño es medio menor.")
-        except Exception as e:
-            print (f"Error al reproducir TTS: {e}")
-            if self.text_channel:
-                await self.text_channel.send("❌ Ocurrió un error al reproducir el TTS, intenta de nuevo, es que mi dueño es medio menor.")
-            
-    """
-    """  
-    @commands.command()
-    async def ping(self, ctx):
-            await ctx.send("pong")
-    """
     @commands.command()
     async def voz(self, ctx, *, text: str):
         if not ctx.author.voice:
             await ctx.send("Debes estar en un canal de voz.")
             return
 
+        if ctx.voice_client is not None:
+            await ctx.voice_client.disconnect(force=True)
+            await asyncio.sleep(1)
+        
         if self.owner_id is None:
             self.owner_id = ctx.author.id
             self.text_channel = ctx.channel
@@ -105,7 +78,7 @@ class TTS(commands.Cog):
 
     # NOW connect to voice
         if ctx.voice_client is None:
-            self.vc = await channel.connect()
+            self.vc = await channel.connect(reconnect=False)
         else:
             self.vc = ctx.voice_client
             if self.vc.channel != channel:
@@ -113,37 +86,15 @@ class TTS(commands.Cog):
 
     # Play immediately after connecting
         if self.vc and self.vc.is_connected():
-            self.vc.play(discord.FFmpegPCMAudio(self.file))
+            def after_playing(error):
+                    if error:
+                        print(f"[PLAY] Error: {os.error}")
+
+            self.vc.play(discord.FFmpegPCMAudio(self.file), after=after_playing)
+                
         else:
             await ctx.send("No pude conectarme al canal de voz.")
     
-    """ 
-    @commands.command()
-        
-    async def voz(self, ctx, *, text: str):
-        if not ctx.author.voice:
-            await ctx.send("Debes estar en un canal de voz.")
-            return
-
-        if self.owner_id is None:
-            self.owner_id = ctx.author.id
-            self.text_channel = ctx.channel
-            await ctx.send(f"Control asignado a {ctx.author.mention} para hablar como un ppy.")
-        elif ctx.author.id != self.owner_id:
-            await ctx.send(f"Toi ocupado con {self.bot.get_user(self.owner_id).mention} menor.")
-            return
-     
-        channel = ctx.author.voice.channel
-
-        if ctx.voice_client is None:
-            self.vc = await channel.connect()
-        else:
-            self.vc = ctx.voice_client
-            if self.vc.channel != channel:
-                await self.vc.move_to(channel)
-
-        await self.speak(text)
-"""
     @commands.command()
     async def salir(self, ctx):
         if ctx.author.id != self.owner_id:
