@@ -57,12 +57,11 @@ def setup(bot: commands.Bot):
         # michis
         if message.author.id == 1200508372642975795:
             await message.add_reaction("✨")
-        '''
-        #misha    
-        if message.author.id == :
+        """   
+        if message.author.id == 538183219783270413:
             await message.add_reaction("🍆")
             await message.add_reaction("🫄")
-         '''
+         """
         
         await bot.process_commands(message)
 

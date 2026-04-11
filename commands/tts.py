@@ -1,5 +1,7 @@
 from enum import member
+from pydoc import text
 import discord
+from discord import channel
 from discord.ext import commands
 from gtts import gTTS
 import asyncio
@@ -15,7 +17,34 @@ class TTS(commands.Cog):
         self.text_channel = None
         
         # Generte the speak function
+    
+    async def speak(self, text):
+        try:
+            print(f"[SPEAK] Generating TTS for: {text}")
+            loop = asyncio.get_event_loop()
+            tts = await loop.run_in_executor(None, lambda: gTTS(text=text, lang="es", slow=False))
+            print(f"[SPEAK] gTTS object created")
         
+            await loop.run_in_executor(None, lambda: tts.save(self.file))
+            print(f"[SPEAK] File saved, exists={os.path.exists(self.file)}, size={os.path.getsize(self.file) if os.path.exists(self.file) else 0}")
+
+            while self.vc.is_playing():
+                await asyncio.sleep(0.5)
+            
+            print(f"[SPEAK] vc={self.vc}, connected={self.vc.is_connected() if self.vc else None}")
+        
+            if self.vc and self.vc.is_connected():
+                print("[SPEAK] Calling vc.play()")
+                self.vc.play(discord.FFmpegPCMAudio(self.file))
+                print("[SPEAK] vc.play() called successfully")
+            else:
+                print("[SPEAK] Not connected!")
+            
+        except Exception as e:
+            import traceback
+            print(f"[SPEAK] Exception: {e}")
+            traceback.print_exc()
+    """  
     async def speak(self, text):
         
         try:
@@ -23,13 +52,18 @@ class TTS(commands.Cog):
             tts = await loop.run_in_executor(None, lambda: gTTS(text=text, lang="es", slow=False))
             await loop.run_in_executor(None, lambda: tts.save(self.file))
 
+            if not os.path.exists(self.file) or os.path.getsize(self.file) == 0:
+                print("Error: El archivo de audio TTS no se generó correctamente.")
+                return
+            
             while self.vc.is_playing():
                 await asyncio.sleep(0.5)
                 
             if self.vc and self.vc.is_connected():
-                self.vc.play(discord.FFmpegPCMAudio(self.file))
-            else:
-                print("No estoy conectado a un canal de voz.")
+                try:
+                    self.vc.play(discord.FFmpegPCMAudio(self.file))
+                except Exception as e:
+                    print(f"FFmpeg error: {e}")
                 
         except asyncio.TimeoutError:
             print("Error: La generación de TTS tomó demasiado tiempo.")
@@ -40,12 +74,50 @@ class TTS(commands.Cog):
             if self.text_channel:
                 await self.text_channel.send("❌ Ocurrió un error al reproducir el TTS, intenta de nuevo, es que mi dueño es medio menor.")
             
+    """
     """  
     @commands.command()
     async def ping(self, ctx):
             await ctx.send("pong")
     """
-        
+    @commands.command()
+    async def voz(self, ctx, *, text: str):
+        if not ctx.author.voice:
+            await ctx.send("Debes estar en un canal de voz.")
+            return
+
+        if self.owner_id is None:
+            self.owner_id = ctx.author.id
+            self.text_channel = ctx.channel
+            await ctx.send(f"Control asignado a {ctx.author.mention}")
+        elif ctx.author.id != self.owner_id:
+            await ctx.send(f"Toi ocupado.")
+            return
+
+        channel = ctx.author.voice.channel
+
+    # Generate TTS FIRST before connecting to voice
+        print("[VOZ] Generating TTS before connecting...")
+        loop = asyncio.get_event_loop()
+        tts = await loop.run_in_executor(None, lambda: gTTS(text=text, lang="es", slow=False))
+        await loop.run_in_executor(None, lambda: tts.save(self.file))
+        print(f"[VOZ] TTS ready, connecting now...")
+
+    # NOW connect to voice
+        if ctx.voice_client is None:
+            self.vc = await channel.connect()
+        else:
+            self.vc = ctx.voice_client
+            if self.vc.channel != channel:
+                await self.vc.move_to(channel)
+
+    # Play immediately after connecting
+        if self.vc and self.vc.is_connected():
+            self.vc.play(discord.FFmpegPCMAudio(self.file))
+        else:
+            await ctx.send("No pude conectarme al canal de voz.")
+    
+    """ 
     @commands.command()
         
     async def voz(self, ctx, *, text: str):
@@ -71,7 +143,7 @@ class TTS(commands.Cog):
                 await self.vc.move_to(channel)
 
         await self.speak(text)
-
+"""
     @commands.command()
     async def salir(self, ctx):
         if ctx.author.id != self.owner_id:
@@ -115,7 +187,10 @@ class TTS(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-
+        print(f"Voice update: {member} | before: {before.channel} | after: {after.channel} | owner_id: {self.owner_id} | member.id: {member.id}")
+        
+        if member.id == self.bot.user.id:
+            return
     # Check if the owner changed voice channels
         if member.id == self.owner_id and self.vc:
             
